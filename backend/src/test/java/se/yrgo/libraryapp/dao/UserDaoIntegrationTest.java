@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.radcortez.flyway.test.annotation.H2;
 
+import se.yrgo.libraryapp.entities.LoginInfo;
 import se.yrgo.libraryapp.entities.User;
 import se.yrgo.libraryapp.entities.UserId;
 
@@ -27,6 +28,8 @@ public class UserDaoIntegrationTest {
         UserDaoIntegrationTest.ds = ds;
     }
 
+    // get
+
     @Test
     void getUserById() {
         // this data comes from the test migration files
@@ -39,5 +42,62 @@ public class UserDaoIntegrationTest {
         assertThat(maybeUser).isPresent();
         assertThat(maybeUser.get().getName()).isEqualTo(username);
         assertThat(maybeUser.get().getId()).isEqualTo(userId);
+    }
+
+    @Test
+    void getUserByIdReturnsEmptyWhenUserDoesNotExist() {
+        UserDao userDao = new UserDao(ds);
+
+        assertThat(userDao.get("9999")).isEmpty();
+    }
+
+    // getLoginInfo
+
+    @Test
+    void getLoginInfoForExistingUser() {
+        UserDao userDao = new UserDao(ds);
+
+        Optional<LoginInfo> maybeInfo = userDao.getLoginInfo("test");
+
+        assertThat(maybeInfo).isPresent();
+        assertThat(maybeInfo.get().getUserId()).isEqualTo(UserId.of(1));
+        assertThat(maybeInfo.get().getPasswordHash()).startsWith("$argon2");
+    }
+
+    @Test
+    void getLoginInfoReturnsEmptyWhenUserDoesNotExist() {
+        UserDao userDao = new UserDao(ds);
+
+        assertThat(userDao.getLoginInfo("nobody")).isEmpty();
+    }
+
+    // isNameAvailable
+
+    @Test
+    void existingNameIsNotAvailable() {
+        UserDao userDao = new UserDao(ds);
+
+        assertThat(userDao.isNameAvailable("test")).isFalse();
+    }
+
+    @Test
+    void unusedNameIsAvailable() {
+        UserDao userDao = new UserDao(ds);
+
+        assertThat(userDao.isNameAvailable("brandnewname")).isTrue();
+    }
+
+    // register
+
+    @Test
+    void registeredUserCanBeFetchedAgain() {
+        UserDao userDao = new UserDao(ds);
+
+        boolean registered = userDao.register("newuser", "New User", "somehash");
+        Optional<LoginInfo> maybeInfo = userDao.getLoginInfo("newuser");
+
+        assertThat(registered).isTrue();
+        assertThat(maybeInfo).isPresent();
+        assertThat(maybeInfo.get().getPasswordHash()).isEqualTo("somehash");
     }
 }
