@@ -1,0 +1,60 @@
+package se.yrgo.libraryapp.integrations;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import io.jooby.JoobyTest;
+import se.yrgo.libraryapp.App;
+
+@Tag("integration")
+@Tag("foobar")
+@Testcontainers
+@JoobyTest(value = App.class, factoryMethod = "createApp")
+public class LoginLogoutIntegrationTest {
+    @Container
+    private static MySQLContainer<?> mySQLContainer = new MySQLContainer<>("mysql:8.0.29");
+
+    public static App createApp() {
+        System.setProperty("db.url", mySQLContainer.getJdbcUrl());
+        System.setProperty("db.user", mySQLContainer.getUsername());
+        System.setProperty("db.password", mySQLContainer.getPassword());
+        return new App();
+    }
+
+    @AfterAll
+    static void reset() {
+        System.clearProperty("db.url");
+        System.clearProperty("db.user");
+        System.clearProperty("db.password");
+    }
+
+    @Test
+    public void alwaysOkToLogout(int serverPort) throws IOException {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + serverPort + "/logout")).build();
+            HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
+
+            assertThat(resp.body()).isEmpty();
+            assertThat(resp.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
+        } catch (IllegalArgumentException | InterruptedException ex) {
+            fail(ex);
+        }
+    }
+}
