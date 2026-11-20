@@ -22,7 +22,6 @@ import io.jooby.JoobyTest;
 import se.yrgo.libraryapp.App;
 
 @Tag("integration")
-@Tag("foobar")
 @Testcontainers
 @JoobyTest(value = App.class, factoryMethod = "createApp")
 public class LoginLogoutIntegrationTest {
